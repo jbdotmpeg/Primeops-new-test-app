@@ -3,17 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PrimeOps Field Suite</title>
+    <title>PrimeOps Field Suite | PDF Edition</title>
     
     <!-- PWA Manifest -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#09090b">
-    <link rel="apple-touch-icon" href="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c2/IT_icon.svg/512px-IT_icon.svg.png">
 
     <!-- Tailwind & Icons -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- SheetJS -->
+    <!-- SheetJS for local CSV/Excel Parsing -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
     <script>
@@ -22,7 +21,8 @@
             theme: { extend: { colors: {
                 brand: { 500: '#f97316', 600: '#ea580c' },
                 zinc: { 850: '#1f1f22', 950: '#09090b' },
-                incident: { 500: '#ef4444' }
+                incident: { 500: '#ef4444' },
+                violet: { 500: '#8b5cf6', 600: '#7c3aed' }
             }}}
         }
     </script>
@@ -30,32 +30,53 @@
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
         body { font-family: 'Inter', sans-serif; background-color: #09090b; color: #f4f4f5; overscroll-behavior-y: contain; }
         
-        /* Strict View Management - No Animations to prevent getting stuck */
+        /* Strict View Management */
         .view-section { display: none; }
         .view-section.active { display: block; }
         .step-container { display: none; }
-        .step-container.active { display: block; }
+        .step-container.active { display: block; animation: fadeUp 0.3s ease-out forwards; }
 
         input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
-        input::-webkit-calendar-picker-indicator { filter: invert(1); }
+        input::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; }
 
-        .p-input { background: #18181b; border: 1px solid #27272a; border-radius: 0.5rem; padding: 0.75rem 1rem; font-size: 0.875rem; font-weight: 600; color: white; width: 100%; outline: none; }
+        .p-input { background: #18181b; border: 1px solid #27272a; border-radius: 0.5rem; padding: 0.75rem 1rem; font-size: 0.875rem; font-weight: 600; color: white; width: 100%; outline: none; transition: border-color 0.2s; }
         .p-input:focus { border-color: #f97316; }
         .p-label { display: block; font-size: 0.65rem; font-weight: 800; color: #a1a1aa; margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.05em; }
+        .p-card { background: #09090b; border-radius: 1rem; border: 1px solid #27272a; padding: 1.5rem; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5); }
         
-        .rack-tile { position: absolute; cursor: move; z-index: 50; touch-action: none; user-select: none; }
+        .stepper-box { display: flex; align-items: center; background: #18181b; border: 1px solid #27272a; border-radius: 0.5rem; overflow: hidden; width: 100%; }
+        .stepper-btn { background: #27272a; color: #d4d4d8; border: none; padding: 0.5rem; font-weight: bold; cursor: pointer; width: 40px; }
+        .stepper-btn:active { background: #f97316; color: #fff; }
+        
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        canvas { touch-action: none !important; cursor: crosshair; }
+        .rack-tile { position: absolute; cursor: move; z-index: 50; touch-action: none; user-select: none; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.5); }
+
+        /* Dynamic PDF Print Engine */
         @media print {
             @page { margin: 0.5in; size: letter portrait; }
             body { background: white !important; color: black !important; }
             body.printing header, body.printing main, body.printing .no-print { display: none !important; }
+            
             #printZone { display: block !important; width: 100%; }
-            .pr-h1 { font-size: 18pt; font-weight: bold; text-align: center; border-bottom: 2px solid black; padding-bottom: 5px; margin-bottom: 15px; text-transform: uppercase; }
-            .pr-h2 { font-size: 11pt; font-weight: bold; background: #eee; padding: 5px; margin-top: 15px; margin-bottom: 5px; -webkit-print-color-adjust: exact; }
-            .pr-p { margin: 0 0 5px 0; font-size: 9pt; }
-            .pr-table { width: 100%; border-collapse: collapse; font-size: 8.5pt; margin-bottom: 10px; }
-            .pr-table th, .pr-table td { border: 1px solid #aaa; padding: 4px; text-align: left; }
-            .pr-img { max-width: 100%; max-height: 300px; border: 1px solid #ccc; display: block; margin-top: 10px; }
+            .pr-h1 { font-size: 18pt; font-weight: 900; text-align: center; border-bottom: 2px solid black; padding-bottom: 5px; margin-bottom: 15px; text-transform: uppercase; }
+            .pr-h2 { font-size: 11pt; font-weight: bold; background: #eee; padding: 5px; margin-top: 15px; margin-bottom: 8px; text-transform: uppercase; -webkit-print-color-adjust: exact; print-color-adjust: exact; border: 1px solid #ddd; }
+            .pr-row { display: flex; gap: 15px; margin-bottom: 8px; }
+            .pr-col { flex: 1; }
+            .pr-p { margin: 0 0 6px 0; font-size: 9.5pt; line-height: 1.4; }
+            .pr-lbl { font-weight: bold; color: #333; display: inline-block; width: 130px; }
+            
+            .pr-table { width: 100%; border-collapse: collapse; font-size: 8.5pt; margin-bottom: 15px; }
+            .pr-table th, .pr-table td { border: 1px solid #aaa; padding: 6px; text-align: left; }
+            .pr-table th { background-color: #f5f5f5 !important; font-weight: bold; text-transform: uppercase; -webkit-print-color-adjust: exact; }
+            
+            .pr-img { max-width: 100%; max-height: 350px; border: 1px solid #ccc; display: block; margin-top: 10px; margin-bottom: 15px; page-break-inside: avoid; }
+            .pr-sig { max-height: 50px; border-bottom: 1px solid #000; margin-bottom: 2px; }
+            .pr-box { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; border-radius: 4px; }
         }
     </style>
 </head>
@@ -66,15 +87,31 @@
     Message
 </div>
 
+<!-- DATA CLEAR MODAL -->
+<div id="settingsModal" class="fixed inset-0 flex items-center justify-center hidden no-print bg-zinc-950/80 z-[9999]">
+    <div class="bg-zinc-900 rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4 border border-zinc-800 text-center">
+        <h3 class="text-xl font-bold text-white mb-2">Data Management</h3>
+        <p class="text-sm text-zinc-400 mb-6">PrimeOps saves your work locally. You can clear the cache to reset all modules.</p>
+        <div class="space-y-3">
+            <button type="button" onclick="App.clearCache()" class="w-full py-3 bg-red-500/10 text-red-500 font-bold rounded-xl border border-red-500/30 hover:bg-red-500 hover:text-white transition-colors">Wipe Local Data</button>
+            <button type="button" onclick="App.closeModal('settingsModal')" class="w-full py-3 bg-zinc-800 text-white font-bold rounded-xl hover:bg-zinc-700 transition-colors">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- GLOBAL DATALIST -->
+<datalist id="dynamicSiteList"></datalist>
+
 <!-- GLOBAL HEADER -->
-<header class="bg-zinc-950 border-b border-zinc-800 sticky top-0 z-[60] no-print h-16 flex items-center px-4 md:px-8">
+<header class="bg-zinc-950 border-b border-zinc-800 sticky top-0 z-[60] no-print h-16 flex justify-between items-center px-4 md:px-8">
     <div class="flex items-center gap-3 cursor-pointer" onclick="App.navigate('dashboard')">
         <div class="bg-brand-500 text-white p-2 rounded-lg"><i data-lucide="layers" class="w-5 h-5"></i></div>
         <div>
             <h1 class="text-sm font-black text-white leading-tight uppercase tracking-widest">PrimeOps</h1>
-            <p class="text-[9px] font-bold text-brand-500 uppercase tracking-widest">Brock Prime Technologies</p>
+            <p class="text-[9px] font-bold text-brand-500 uppercase tracking-widest">PDF Report Engine</p>
         </div>
     </div>
+    <button onclick="App.openModal('settingsModal')" class="p-2 text-zinc-400 hover:text-white"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
 </header>
 
 <!-- MAIN APP AREA -->
@@ -82,513 +119,694 @@
 
     <!-- VIEW: DASHBOARD -->
     <div id="view-dashboard" class="view-section active space-y-8">
-        <div class="text-center mt-8">
+        <div class="text-center mt-4 md:mt-8">
             <h2 class="text-4xl font-black text-white uppercase italic">Command Center</h2>
-            <p class="text-zinc-400 mt-2">PWA Offline-Ready Field Engine.</p>
+            <p class="text-zinc-400 mt-2 text-sm">Select a module to begin drafting a PDF report.</p>
         </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto mt-12">
-            
-            <button onclick="App.navigate('audit')" class="bg-zinc-900 border border-zinc-800 p-8 rounded-2xl text-left hover:border-brand-500 transition-colors group">
-                <div class="w-14 h-14 bg-brand-500/20 text-brand-500 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform"><i data-lucide="clipboard-check" class="w-7 h-7"></i></div>
-                <h3 class="text-xl font-bold text-white mb-2">Site Audit Pro</h3>
-                <p class="text-zinc-500 text-sm">Full infrastructure sweeps and topology mapping.</p>
-            </button>
-
-            <button onclick="App.navigate('outage')" class="bg-zinc-900 border border-zinc-800 p-8 rounded-2xl text-left hover:border-incident-500 transition-colors group">
-                <div class="w-14 h-14 bg-incident-500/20 text-incident-500 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform"><i data-lucide="shield-alert" class="w-7 h-7"></i></div>
-                <h3 class="text-xl font-bold text-white mb-2">Outage Reporter</h3>
-                <p class="text-zinc-500 text-sm">Standardized ISP incident tracking and resolution logging.</p>
-            </button>
-
+        <div id="dash-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-12">
+            <!-- Injected via JS -->
         </div>
     </div>
 
-    <!-- VIEW: SITE AUDIT -->
-    <div id="view-audit" class="view-section">
-        <div class="flex flex-col lg:flex-row gap-8">
-            
-            <!-- Sidebar -->
-            <aside class="w-full lg:w-64 shrink-0 no-print space-y-2">
-                <button onclick="App.navigate('dashboard')" class="w-full px-4 py-3 bg-zinc-900 border border-zinc-800 text-zinc-400 font-bold rounded-xl mb-4 hover:text-white"><i data-lucide="arrow-left" class="inline w-4 h-4 mr-2"></i> Main Menu</button>
-                <div id="auditNav" class="flex lg:flex-col overflow-x-auto gap-2"></div>
-            </aside>
-
-            <!-- Main Form -->
-            <div class="flex-1 bg-zinc-900 border border-zinc-800 rounded-2xl p-6 md:p-8 relative min-h-[600px]">
-                <h2 id="auditStepTitle" class="text-2xl font-black text-white uppercase border-b border-zinc-800 pb-4 mb-6">Step Title</h2>
-                
-                <form id="form-audit">
-                    <!-- Step 1: Location -->
-                    <div id="audit-step-1" class="step-container active space-y-6">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div><label class="p-label">Client / Org Name</label><input type="text" id="aud_org" class="p-input" value="Brock Prime"></div>
-                            <div><label class="p-label">Site Name</label><input type="text" id="aud_site" class="p-input"></div>
-                            <div>
-                                <label class="p-label">Physical Address</label>
-                                <div class="flex gap-2">
-                                    <input type="text" id="aud_address" class="p-input text-xs">
-                                    <button type="button" onclick="App.getGPS('aud_address')" class="bg-zinc-800 px-4 rounded-lg text-brand-500"><i data-lucide="crosshair" class="w-5 h-5"></i></button>
-                                </div>
-                            </div>
-                            <div><label class="p-label">Auditor Name</label><input type="text" id="aud_name" class="p-input"></div>
-                        </div>
-                    </div>
-
-                    <!-- Step 2: Edge -->
-                    <div id="audit-step-2" class="step-container space-y-6">
-                        <div class="grid grid-cols-2 gap-4">
-                            <div><label class="p-label">Primary ISP</label><input type="text" id="aud_isp" class="p-input"></div>
-                            <div><label class="p-label">Failover ISP</label><input type="text" id="aud_failover" class="p-input"></div>
-                        </div>
-                        <div class="pt-4 border-t border-zinc-800">
-                            <label class="p-label mb-2">Gateways & Firewalls</label>
-                            <div id="inv-gw" class="space-y-2 mb-2"></div>
-                            <button type="button" onclick="App.addInv('gw')" class="w-full py-3 bg-zinc-800 text-zinc-300 font-bold rounded-lg text-xs">+ ADD GATEWAY</button>
-                        </div>
-                    </div>
-
-                    <!-- Step 3: Topology Canvas -->
-                    <div id="audit-step-3" class="step-container space-y-6">
-                        <div class="flex gap-2 mb-2 no-print">
-                            <button type="button" onclick="App.addTile('Switch', 'bg-blue-600')" class="px-3 py-1.5 bg-zinc-800 rounded text-[10px] font-bold text-white">+ Switch</button>
-                            <button type="button" onclick="App.addTile('Router', 'bg-emerald-600')" class="px-3 py-1.5 bg-zinc-800 rounded text-[10px] font-bold text-white">+ Router</button>
-                            <button type="button" onclick="App.addTile('Firewall', 'bg-red-600')" class="px-3 py-1.5 bg-zinc-800 rounded text-[10px] font-bold text-white">+ Firewall</button>
-                            <button type="button" onclick="App.clearCanvas()" class="ml-auto text-red-500 text-xs font-bold px-3">Clear</button>
-                        </div>
-                        <div class="h-[400px] border-2 border-zinc-700 bg-white rounded-xl relative overflow-hidden">
-                            <canvas id="topoCanvas" class="absolute inset-0 w-full h-full z-10"></canvas>
-                            <div id="tileLayer" class="absolute inset-0 z-20 pointer-events-none"></div>
-                        </div>
-                        <p class="text-xs text-zinc-500">Draw cables with your finger. Drag elements to position.</p>
-                    </div>
-
-                    <!-- Step 4: Summary -->
-                    <div id="audit-step-4" class="step-container space-y-6">
-                        <div><label class="p-label">Closing Notes</label><textarea id="aud_notes" rows="4" class="p-input"></textarea></div>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div><label class="p-label">Auditor Signature</label><div class="h-24 bg-white rounded-lg border border-zinc-700"><canvas id="sig1" class="w-full h-full"></canvas></div></div>
-                            <div><label class="p-label">Site Rep Signature</label><div class="h-24 bg-white rounded-lg border border-zinc-700"><canvas id="sig2" class="w-full h-full"></canvas></div></div>
-                        </div>
-                    </div>
-                </form>
-
-                <!-- Navigation Footer -->
-                <div class="mt-8 pt-6 border-t border-zinc-800 flex justify-between no-print">
-                    <button id="audPrev" onclick="App.auditNext(-1)" class="px-6 py-3 bg-zinc-800 text-zinc-300 font-bold rounded-xl hidden">Back</button>
-                    <div class="flex gap-3 ml-auto">
-                        <button id="audNext" onclick="App.auditNext(1)" class="px-8 py-3 bg-brand-500 text-white font-bold rounded-xl">Next Step</button>
-                        <button id="audPdf" onclick="App.exportAudit()" class="px-8 py-3 bg-zinc-700 text-white font-bold rounded-xl hidden"><i data-lucide="printer" class="w-4 h-4 inline mr-2"></i> PDF</button>
-                    </div>
-                </div>
-
+    <!-- VIEW: SINGLE PAGE MODULE -->
+    <div id="view-single" class="view-section flex-col max-w-4xl mx-auto w-full space-y-6">
+        <button onclick="App.navigate('dashboard')" class="text-zinc-400 hover:text-white flex items-center gap-2 font-bold text-sm w-fit no-print"><i data-lucide="arrow-left" class="w-4 h-4"></i> Back to Menu</button>
+        <div class="p-card border-t-4" id="single-card">
+            <h2 id="single-title" class="text-2xl font-black text-white mb-6 uppercase tracking-tight">Module Title</h2>
+            <div id="single-content" class="space-y-6">
+                <!-- Dynamic Content -->
+            </div>
+            <div class="mt-8 pt-6 border-t border-zinc-800 flex justify-end no-print">
+                <button type="button" onclick="App.exportPDF()" class="px-10 py-4 bg-brand-500 text-white font-bold rounded-xl shadow-lg flex items-center gap-2 text-lg hover:bg-brand-600 transition-colors"><i data-lucide="printer" class="w-6 h-6"></i> Export PDF Report</button>
             </div>
         </div>
     </div>
 
-    <!-- VIEW: OUTAGE -->
-    <div id="view-outage" class="view-section">
-        <div class="max-w-2xl mx-auto bg-zinc-900 border border-zinc-800 rounded-2xl p-6 md:p-8 relative">
-            <button onclick="App.navigate('dashboard')" class="absolute top-6 right-6 text-zinc-500 hover:text-white no-print"><i data-lucide="x" class="w-6 h-6"></i></button>
-            <h2 class="text-2xl font-black text-white uppercase mb-2">Outage Reporter</h2>
-            <p class="text-zinc-400 text-sm mb-8 border-b border-zinc-800 pb-6">Log ISP/Circuit incidents rapidly.</p>
-
-            <form id="form-outage" class="space-y-6">
-                <div>
-                    <div class="flex justify-between items-end mb-2">
-                        <label class="p-label mb-0">Affected Site</label>
-                        <button type="button" onclick="document.getElementById('csvUp').click()" class="text-[10px] text-brand-500 font-bold bg-brand-500/10 px-2 py-1 rounded no-print">Upload CSV</button>
-                        <input type="file" id="csvUp" accept=".csv" class="hidden" onchange="App.parseCSV(event)">
-                    </div>
-                    <input type="text" id="out_site" list="siteDataList" class="p-input" placeholder="Type or select site...">
-                </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div><label class="p-label">Date</label><input type="date" id="out_date" class="p-input"></div>
-                    <div><label class="p-label">Provider/ISP</label><input type="text" id="out_isp" class="p-input"></div>
-                    <div><label class="p-label">Circuit ID</label><input type="text" id="out_circ" class="p-input font-mono"></div>
-                    <div><label class="p-label">Ticket #</label><input type="text" id="out_tkt" class="p-input font-mono"></div>
-                </div>
-                <div><label class="p-label">Symptoms & Impact</label><textarea id="out_symp" rows="3" class="p-input"></textarea></div>
-                <div><label class="p-label">Resolution Actions</label><textarea id="out_res" rows="3" class="p-input"></textarea></div>
-
-                <div class="pt-6 mt-6 border-t border-zinc-800 flex justify-end no-print">
-                    <button type="button" onclick="App.exportOutage()" class="px-8 py-3 bg-incident-500 text-white font-bold rounded-xl shadow-lg"><i data-lucide="printer" class="inline w-4 h-4 mr-2"></i> Export Report</button>
-                </div>
+    <!-- VIEW: MULTI-STEP WIZARD -->
+    <div id="view-wizard" class="view-section flex-col lg:flex-row gap-8 w-full max-w-6xl mx-auto">
+        <aside class="w-full lg:w-64 no-print shrink-0 space-y-4">
+            <button onclick="App.navigate('dashboard')" class="w-full px-4 py-3 bg-zinc-900 border border-zinc-800 text-zinc-400 font-bold rounded-xl flex items-center justify-center gap-2 hover:text-white transition-colors"><i data-lucide="arrow-left" class="w-4 h-4"></i> Main Menu</button>
+            <nav id="wizardNav" class="space-y-2 flex flex-row lg:flex-col overflow-x-auto hide-scrollbar gap-2 pb-2 lg:pb-0"></nav>
+        </aside>
+        <div class="flex-1 min-w-0 relative">
+            <div class="no-print bg-zinc-900/80 rounded-xl border border-zinc-800 p-4 mb-6 flex items-center gap-4">
+                <div class="flex items-center gap-3 shrink-0"><div id="wizBadge" class="bg-brand-500 text-white w-8 h-8 rounded-full flex items-center justify-center font-black">1</div><span id="wizTitle" class="text-xs font-bold text-white uppercase tracking-widest">Step</span></div>
+                <div class="flex-1 bg-zinc-800 h-1.5 rounded-full overflow-hidden"><div id="wizProgress" class="bg-brand-500 h-full transition-all duration-500" style="width: 10%"></div></div>
+            </div>
+            
+            <form id="wizardForm" class="p-card min-h-[500px] border-t-4 border-t-brand-500 relative">
+                <div id="wizardContent"></div>
             </form>
+
+            <div class="no-print mt-6 flex justify-between items-center gap-4 sticky bottom-4 z-50 p-4 bg-zinc-900/95 backdrop-blur-md rounded-2xl border border-zinc-800 shadow-2xl">
+                <button type="button" id="wizPrevBtn" onclick="App.Wizard.prev()" class="px-6 py-3 bg-zinc-800 text-zinc-300 font-bold rounded-xl hidden hover:bg-zinc-700">Back</button>
+                <div class="flex gap-3 ml-auto">
+                    <button type="button" id="wizNextBtn" onclick="App.Wizard.next()" class="px-10 py-3 bg-zinc-800 text-white font-bold border border-zinc-700 rounded-xl hover:bg-zinc-700">Next Step</button>
+                    <button type="button" id="wizPdfBtn" onclick="App.exportPDF()" class="px-10 py-4 bg-brand-500 text-white font-bold rounded-xl shadow-lg hidden flex items-center gap-2 hover:bg-brand-600 transition-colors"><i data-lucide="printer" class="w-5 h-5"></i> Export Final PDF</button>
+                </div>
+            </div>
         </div>
     </div>
 
 </main>
 
-<!-- DYNAMIC PRINT ZONE -->
+<!-- DYNAMIC PRINT ZONE (Hidden until printed) -->
 <div id="printZone" class="hidden"></div>
-<datalist id="siteDataList"></datalist>
+
+<!-- GENERIC HTML TEMPLATE FOR INVENTORY ROWS -->
+<template id="tpl-inv-row">
+    <div class="flex flex-col md:flex-row gap-3 p-3 bg-zinc-900 border border-zinc-800 rounded-xl relative focus-within:border-brand-500 transition-colors inv-row" data-id="">
+        <div class="dynamic-fields flex-1 grid grid-cols-2 md:flex gap-3 pr-8"></div>
+        <button type="button" class="absolute top-2 right-2 text-zinc-500 hover:text-red-500 bg-zinc-950 p-1.5 rounded-lg border border-zinc-800" onclick="App.Inventory.remove(this)">
+            <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+    </div>
+</template>
 
 <script>
     /**
-     * PrimeOps Field Engine
-     * Simplified, un-breakable Vanilla JS Architecture.
+     * PrimeOps PDF Engine 
+     * 100% Offline, Serverless, Auto-Saving PDF Generator
      */
     
     const App = {
-        state: {
-            view: 'dashboard',
-            auditStep: 1,
-            inventory: { gw: [] },
-            canvasDrawing: null
+        config: { prefix: 'po_pdf_' },
+        state: { 
+            view: 'dashboard', activeModule: null, step: 1, 
+            invData: {}, canvasData: {}, sites: [] 
         },
         
+        // Define all 10 Field Modules
+        modules: [
+            { id: 'audit', type: 'wizard', title: 'Site Audit Pro', icon: 'clipboard-check', color: 'brand', steps: [
+                { id: 'loc', title: 'Location', build: () => UI.bAudLoc() },
+                { id: 'net', title: 'Network Edge', build: () => UI.bAudNet() },
+                { id: 'lan', title: 'LAN & WLAN', build: () => UI.bAudLan() },
+                { id: 'pwr', title: 'Power / UPS', build: () => UI.bAudPwr() },
+                { id: 'acc', title: 'Access Control', build: () => UI.bAudAcc() },
+                { id: 'cam', title: 'CCTV / NVR', build: () => UI.bAudCam() },
+                { id: 'top', title: 'Topology Map', build: () => UI.bTopology() },
+                { id: 'sum', title: 'Sign-Off', build: () => UI.bSignoff() }
+            ]},
+            { id: 'rfq', type: 'wizard', title: 'RFQ Builder', icon: 'file-signature', color: 'violet', steps: [
+                { id: 'r_proj', title: 'Project Info', build: () => UI.bRfqProj() },
+                { id: 'r_scope', title: 'Scope of Work', build: () => UI.bRfqScope() },
+                { id: 'r_admin', title: 'Administration', build: () => UI.bRfqAdmin() }
+            ]},
+            { id: 'outage', type: 'wizard', title: 'Outage Reporter', icon: 'shield-alert', color: 'incident', steps: [
+                { id: 'o_site', title: 'Site & Provider', build: () => UI.bOutSite() },
+                { id: 'o_imp', title: 'Outage Impact', build: () => UI.bOutImp() },
+                { id: 'o_res', title: 'Resolution', build: () => UI.bOutRes() },
+                { id: 'o_rev', title: 'Post-Review', build: () => UI.bOutRev() }
+            ]},
+            { id: 'fiber', type: 'single', title: 'Fiber OSP Audit', icon: 'route', color: 'emerald', build: () => UI.bFiber() },
+            { id: 'cutsheet', type: 'single', title: 'Rack Cut-Sheet', icon: 'network', color: 'brand', build: () => UI.bCutsheet() },
+            { id: 'inventory', type: 'single', title: 'Device Replace/Swap', icon: 'arrow-left-right', color: 'blue', build: () => UI.bInventory() },
+            { id: 'wireless', type: 'single', title: 'Wi-Fi Heatmap', icon: 'wifi', color: 'cyan', build: () => UI.bWifi() },
+            { id: 'port', type: 'single', title: 'Port Validation', icon: 'check-square', color: 'brand', build: () => UI.bPort() },
+            { id: 'rma', type: 'single', title: 'RMA Return Log', icon: 'package-open', color: 'amber', build: () => UI.bRma() },
+            { id: 'accept', type: 'single', title: 'User Acceptance', icon: 'user-check', color: 'emerald', build: () => UI.bAccept() }
+        ],
+
         init: function() {
+            this.loadLocalData();
+            this.renderDashboard();
+            this.navigate('dashboard');
             lucide.createIcons();
-            
-            // Restore Basic Data
-            document.querySelectorAll('.p-input').forEach(el => {
-                if(el.id) {
-                    const saved = localStorage.getItem('po_' + el.id);
-                    if(saved) el.value = saved;
-                    el.addEventListener('input', e => localStorage.setItem('po_' + e.target.id, e.target.value));
+
+            // Auto-Save Listeners
+            document.addEventListener('input', e => {
+                if(e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') {
+                    if(e.target.dataset.field) {
+                        const row = e.target.closest('.inv-row');
+                        if(row) {
+                            const listId = row.dataset.list;
+                            const dev = this.state.invData[listId].find(d => d._id === row.dataset.id);
+                            if(dev) dev[e.target.dataset.field] = e.target.value;
+                        }
+                    } else if(e.target.id && e.target.type !== 'file') {
+                        localStorage.setItem(this.config.prefix + e.target.id, e.target.type === 'checkbox' ? e.target.checked : e.target.value);
+                    }
+                    this.triggerSave();
                 }
             });
 
-            // Set Date Defaults
-            if(!document.getElementById('auditDate').value) document.getElementById('auditDate').value = new Date().toISOString().split('T')[0];
-            if(!document.getElementById('out_date').value) document.getElementById('out_date').value = new Date().toISOString().split('T')[0];
-
-            this.renderAuditNav();
-            this.restoreInventory();
-
-            // Set up Signature Pads
-            this.setupSimpleCanvas('sig1');
-            this.setupSimpleCanvas('sig2');
+            // +/- Stepper Support
+            document.addEventListener('click', e => {
+                const btn = e.target.closest('.stepper-btn');
+                if(btn) {
+                    const input = btn.parentElement.querySelector('input');
+                    let val = parseFloat(input.value) || 0;
+                    val += btn.dataset.action === 'inc' ? 1 : -1;
+                    input.value = val;
+                    input.dispatchEvent(new Event('input', {bubbles:true}));
+                }
+            });
         },
 
         toast: function(msg) {
             const t = document.getElementById('toast');
-            t.innerText = msg;
-            t.classList.remove('translate-y-[-150%]');
+            t.innerText = msg; t.classList.remove('translate-y-[-150%]');
             setTimeout(() => t.classList.add('translate-y-[-150%]'), 3000);
+        },
+
+        loadLocalData: function() {
+            try { 
+                const d = localStorage.getItem(this.config.prefix + 'invData'); if(d) this.state.invData = JSON.parse(d); 
+                const c = localStorage.getItem(this.config.prefix + 'canvasData'); if(c) this.state.canvasData = JSON.parse(c);
+                const s = localStorage.getItem(this.config.prefix + 'sites'); if(s) { this.state.sites = JSON.parse(s); this.populateSites(); }
+            } catch(e) {}
+            
+            setTimeout(() => {
+                document.querySelectorAll('input, select, textarea').forEach(el => {
+                    if(el.id && !el.dataset.field && el.type !== 'file') {
+                        const v = localStorage.getItem(this.config.prefix + el.id);
+                        if(v !== null) { if(el.type==='checkbox') el.checked = v==='true'; else el.value = v; }
+                    }
+                });
+            }, 100);
+        },
+
+        triggerSave: function() {
+            clearTimeout(this.saveTimer);
+            this.saveTimer = setTimeout(() => {
+                localStorage.setItem(this.config.prefix + 'invData', JSON.stringify(this.state.invData));
+                localStorage.setItem(this.config.prefix + 'canvasData', JSON.stringify(this.state.canvasData));
+            }, 500);
+        },
+
+        clearCache: function() {
+            Object.keys(localStorage).forEach(k => k.startsWith(this.config.prefix) && localStorage.removeItem(k));
+            location.reload();
+        },
+
+        openModal: id => document.getElementById(id).classList.remove('hidden'),
+        closeModal: id => document.getElementById(id).classList.add('hidden'),
+
+        renderDashboard: function() {
+            document.getElementById('dash-grid').innerHTML = this.modules.map(m => `
+                <button onclick="App.loadModule('${m.id}')" class="p-card text-left hover:border-${m.color}-500 transition-all group">
+                    <div class="w-12 h-12 rounded-xl bg-${m.color}-500/10 flex items-center justify-center mb-4 text-${m.color}-500 border border-${m.color}-500/20 group-hover:scale-110 transition-transform">
+                        <i data-lucide="${m.icon}" class="w-6 h-6"></i>
+                    </div>
+                    <h3 class="text-lg font-bold text-white mb-1">${m.title}</h3>
+                </button>
+            `).join('');
         },
 
         navigate: function(viewId) {
             document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
             document.getElementById('view-' + viewId).classList.add('active');
             window.scrollTo(0,0);
+        },
+
+        loadModule: function(id) {
+            const mod = this.modules.find(m => m.id === id);
+            this.state.activeModule = mod;
             
-            if(viewId === 'audit') {
-                this.goToAuditStep(1);
-            }
-        },
-
-        // --- SITE AUDIT WIZARD LOGIC ---
-        auditSteps: ["Location", "Edge Network", "Topology Canvas", "Sign-Off"],
-        
-        renderAuditNav: function() {
-            const nav = document.getElementById('auditNav');
-            nav.innerHTML = this.auditSteps.map((title, idx) => `
-                <button type="button" onclick="App.goToAuditStep(${idx+1})" class="w-full text-left px-4 py-3 rounded-xl font-bold text-[10px] uppercase tracking-widest border transition-all ${this.state.auditStep === idx+1 ? 'bg-zinc-800 text-white border-brand-500' : 'bg-zinc-950 text-zinc-500 border-zinc-800'}">
-                    ${idx+1}. ${title}
-                </button>
-            `).join('');
-            document.getElementById('auditStepTitle').innerText = `${this.state.auditStep}. ${this.auditSteps[this.state.auditStep-1]}`;
-        },
-
-        goToAuditStep: function(step) {
-            this.state.auditStep = step;
-            this.renderAuditNav();
-
-            // Toggle UI
-            document.querySelectorAll('#view-audit .step-container').forEach((el, idx) => {
-                if(idx+1 === step) el.classList.add('active');
-                else el.classList.remove('active');
-            });
-
-            // Buttons
-            document.getElementById('audPrev').style.display = step === 1 ? 'none' : 'block';
-            document.getElementById('audNext').style.display = step === 4 ? 'none' : 'block';
-            document.getElementById('audPdf').style.display = step === 4 ? 'block' : 'none';
-
-            // Crucial: Setup Canvas ONLY when its container is visible
-            if(step === 3) {
-                setTimeout(() => this.setupTopologyCanvas(), 50);
-            }
-        },
-
-        auditNext: function(dir) {
-            this.goToAuditStep(this.state.auditStep + dir);
-        },
-
-        // --- INVENTORY LOGIC ---
-        addInv: function(type) {
-            this.state.inventory[type].push({ id: Date.now(), name: '', model: '' });
-            this.renderInventory(type);
-        },
-        removeInv: function(type, id) {
-            this.state.inventory[type] = this.state.inventory[type].filter(item => item.id !== id);
-            this.renderInventory(type);
-        },
-        renderInventory: function(type) {
-            const container = document.getElementById('inv-' + type);
-            container.innerHTML = this.state.inventory[type].map(item => `
-                <div class="flex gap-2 p-3 bg-zinc-950 border border-zinc-800 rounded-lg relative">
-                    <div class="flex-1"><label class="p-label text-[8px]">ID/Name</label><input type="text" class="p-input py-1 text-xs" value="${item.name}" oninput="App.updateInv('${type}', ${item.id}, 'name', this.value)"></div>
-                    <div class="flex-1"><label class="p-label text-[8px]">Model</label><input type="text" class="p-input py-1 text-xs" value="${item.model}" oninput="App.updateInv('${type}', ${item.id}, 'model', this.value)"></div>
-                    <button type="button" onclick="App.removeInv('${type}', ${item.id})" class="text-zinc-600 hover:text-red-500 font-bold px-2">X</button>
-                </div>
-            `).join('');
-            localStorage.setItem('po_inv', JSON.stringify(this.state.inventory));
-        },
-        updateInv: function(type, id, field, val) {
-            const item = this.state.inventory[type].find(i => i.id === id);
-            if(item) { item[field] = val; localStorage.setItem('po_inv', JSON.stringify(this.state.inventory)); }
-        },
-        restoreInventory: function() {
-            try { const s = localStorage.getItem('po_inv'); if(s) this.state.inventory = JSON.parse(s); } catch(e){}
-            this.renderInventory('gw');
-        },
-
-        // --- CANVAS ENGINE (FLAWLESS VERSION) ---
-        setupTopologyCanvas: function() {
-            const canvas = document.getElementById('topoCanvas');
-            if(canvas.dataset.ready) return;
-            canvas.dataset.ready = 'true';
-            
-            // Fixed internal resolution stops mobile resize bugs
-            canvas.width = 1200;
-            canvas.height = 800;
-            const ctx = canvas.getContext('2d');
-
-            // Restore drawing
-            if(this.state.canvasDrawing) {
-                const img = new Image();
-                img.onload = () => ctx.drawImage(img, 0, 0);
-                img.src = this.state.canvasDrawing;
-            }
-
-            let isDrawing = false;
-            const getPos = (e) => {
-                const rect = canvas.getBoundingClientRect();
-                const scaleX = canvas.width / rect.width;
-                const scaleY = canvas.height / rect.height;
-                const cX = e.clientX || e.touches[0].clientX;
-                const cY = e.clientY || e.touches[0].clientY;
-                return { x: (cX - rect.left) * scaleX, y: (cY - rect.top) * scaleY };
-            };
-
-            const start = (e) => { isDrawing = true; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); };
-            const move = (e) => { 
-                if(!isDrawing) return; 
-                e.preventDefault(); 
-                const p = getPos(e); 
-                ctx.lineWidth = 5; ctx.lineCap = 'round'; ctx.strokeStyle = '#3b82f6'; 
-                ctx.lineTo(p.x, p.y); ctx.stroke(); 
-            };
-            const end = () => { if(isDrawing) { isDrawing = false; this.state.canvasDrawing = canvas.toDataURL(); } };
-
-            canvas.onmousedown = canvas.ontouchstart = start;
-            canvas.onmousemove = canvas.ontouchmove = move;
-            canvas.onmouseup = canvas.ontouchend = canvas.onmouseout = end;
-        },
-
-        setupSimpleCanvas: function(id) {
-            const canvas = document.getElementById(id);
-            // Smaller fixed res for signatures
-            canvas.width = 600; canvas.height = 200;
-            const ctx = canvas.getContext('2d');
-            let isDrawing = false;
-            
-            const getPos = (e) => {
-                const rect = canvas.getBoundingClientRect();
-                const cX = e.clientX || e.touches[0].clientX;
-                const cY = e.clientY || e.touches[0].clientY;
-                return { x: (cX - rect.left) * (canvas.width/rect.width), y: (cY - rect.top) * (canvas.height/rect.height) };
-            };
-
-            canvas.onmousedown = canvas.ontouchstart = e => { isDrawing = true; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); };
-            canvas.onmousemove = canvas.ontouchmove = e => { if(!isDrawing) return; e.preventDefault(); const p = getPos(e); ctx.lineWidth = 3; ctx.strokeStyle = '#000'; ctx.lineTo(p.x, p.y); ctx.stroke(); };
-            canvas.onmouseup = canvas.ontouchend = canvas.onmouseout = () => isDrawing = false;
-        },
-
-        clearCanvas: function(id = 'topologyCanvas') {
-            if(id === 'topologyCanvas') {
-                const c = document.getElementById('topoCanvas');
-                c.getContext('2d').clearRect(0,0,c.width,c.height);
-                this.state.canvasDrawing = null;
-                document.getElementById('tileLayer').innerHTML = '';
+            if(mod.type === 'wizard') {
+                this.Wizard.init(mod);
+                this.navigate('wizard');
             } else {
-                const c = document.getElementById(id);
-                c.getContext('2d').clearRect(0,0,c.width,c.height);
+                document.getElementById('single-title').innerText = mod.title;
+                document.getElementById('single-card').className = `p-card border-t-4 border-t-${mod.color}-500`;
+                document.getElementById('single-content').innerHTML = mod.build();
+                this.navigate('single');
+                
+                setTimeout(() => {
+                    document.querySelectorAll('#single-content canvas').forEach(c => this.Canvas.setup(c.id));
+                    document.querySelectorAll('#single-content [data-inv]').forEach(el => this.Inventory.render(el.dataset.inv));
+                    lucide.createIcons();
+                }, 50);
             }
         },
 
-        addTile: function(type, bgClass) {
-            const label = prompt("Enter Label:", type);
-            if(!label) return;
-            
-            const layer = document.getElementById('tileLayer');
-            const tile = document.createElement('div');
-            tile.className = `rack-tile px-3 py-1 text-white text-[10px] font-bold rounded shadow-lg border-2 border-white pointer-events-auto ${bgClass}`;
-            tile.innerText = label;
-            tile.style.left = "10px"; tile.style.top = "10px";
-            tile.ondblclick = () => tile.remove();
-
-            let isDragging = false, startX, startY;
-            tile.onmousedown = tile.ontouchstart = e => {
-                isDragging = true;
-                startX = (e.clientX || e.touches[0].clientX) - tile.offsetLeft;
-                startY = (e.clientY || e.touches[0].clientY) - tile.offsetTop;
-            };
-            
-            const move = e => {
-                if(!isDragging) return;
-                e.preventDefault();
-                tile.style.left = ((e.clientX || (e.touches && e.touches[0].clientX)) - startX) + 'px';
-                tile.style.top = ((e.clientY || (e.touches && e.touches[0].clientY)) - startY) + 'px';
-            };
-            const stop = () => isDragging = false;
-            
-            document.addEventListener('mousemove', move, {passive:false});
-            document.addEventListener('touchmove', move, {passive:false});
-            document.addEventListener('mouseup', stop);
-            document.addEventListener('touchend', stop);
-
-            layer.appendChild(tile);
-        },
-
-        flattenTopology: function() {
-            const main = document.getElementById('topoCanvas');
-            const temp = document.createElement('canvas');
-            temp.width = main.width; temp.height = main.height;
-            const ctx = temp.getContext('2d');
-            
-            // 1. White BG
-            ctx.fillStyle = "white"; ctx.fillRect(0,0,temp.width,temp.height);
-            // 2. Draw Lines
-            ctx.drawImage(main, 0, 0);
-            
-            // 3. Draw HTML Tiles
-            const rect = main.getBoundingClientRect();
-            const scaleX = main.width / rect.width;
-            const scaleY = main.height / rect.height;
-
-            document.querySelectorAll('.rack-tile').forEach(t => {
-                const tRect = t.getBoundingClientRect();
-                const x = (tRect.left - rect.left) * scaleX;
-                const y = (tRect.top - rect.top) * scaleY;
-                const w = t.offsetWidth * scaleX;
-                const h = t.offsetHeight * scaleY;
-                
-                // Shadow & Box
-                ctx.fillStyle = "#000"; ctx.fillRect(x-2, y-2, w+4, h+4);
-                ctx.fillStyle = t.classList.contains('bg-blue-600') ? "#2563eb" : (t.classList.contains('bg-red-600') ? "#dc2626" : "#059669");
-                ctx.fillRect(x, y, w, h);
-                
-                // Text
-                ctx.fillStyle = "white"; ctx.font = "bold 16px Arial"; ctx.textAlign = "center";
-                ctx.fillText(t.innerText, x+(w/2), y+(h/2)+6);
-            });
-
-            return temp.toDataURL('image/jpeg', 0.9);
-        },
-
-        // --- UTILS ---
-        getGPS: function(targetId) {
-            const el = document.getElementById(targetId);
-            el.value = "Locating...";
-            navigator.geolocation.getCurrentPosition(
-                p => { el.value = `${p.coords.latitude.toFixed(5)}, ${p.coords.longitude.toFixed(5)}`; },
-                e => { el.value = ""; this.toast("GPS Denied by Device."); }
-            );
-        },
-
-        parseCSV: function(e) {
+        // --- SPREADSHEET IMPORTER ---
+        handleCSV: function(e) {
             const file = e.target.files[0]; if(!file) return;
             const r = new FileReader();
             r.onload = ev => {
                 try {
-                    const data = new Uint8Array(ev.target.result);
-                    const wb = XLSX.read(data, {type: 'array'});
-                    const json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+                    const wb = XLSX.read(new Uint8Array(ev.target.result), {type: 'array'});
+                    const json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header: 1});
+                    if(json.length < 2) return this.toast("No data found.");
                     
-                    const dl = document.getElementById('siteDataList');
-                    dl.innerHTML = json.map(row => {
-                        const name = row['Site'] || row['Location'] || row['Name'];
-                        return name ? `<option value="${name}">` : '';
-                    }).join('');
-                    this.toast("Site List Loaded!");
-                } catch(err) { this.toast("Failed to read CSV/Excel."); }
+                    const headers = json[0].map(h => (h||'').toString().toLowerCase().trim());
+                    const iCity = headers.findIndex(h => h === 'city'), iSite = headers.findIndex(h => h === 'site' || h === 'location'), iProv = headers.findIndex(h => h.includes('provider') || h.includes('isp'));
+
+                    let newSites = [];
+                    for(let i=1; i<json.length; i++) {
+                        const row = json[i]; if(!row || !row.length) continue;
+                        let site = (iSite !== -1 && row[iSite]) ? row[iSite].toString().trim() : '';
+                        if(site) newSites.push({ city: (iCity !== -1 && row[iCity]) ? row[iCity] : 'Other', site, provider: iProv !== -1 ? row[iProv] : '' });
+                    }
+                    if(newSites.length) {
+                        this.state.sites = newSites.sort((a,b) => a.city.localeCompare(b.city));
+                        localStorage.setItem(this.config.prefix + 'sites', JSON.stringify(this.state.sites));
+                        this.populateSites();
+                        this.toast(`Loaded ${newSites.length} sites!`);
+                    }
+                } catch(err) { this.toast("Failed to parse file."); }
             };
             r.readAsArrayBuffer(file);
         },
-
-        // --- EXPORT ENGINES ---
-        exportAudit: async function() {
-            const org = document.getElementById('aud_org').value || 'PrimeOps';
-            const site = document.getElementById('aud_site').value || 'Site';
-            
-            let html = `
-                <h1 class="pr-h1">Infrastructure Audit Report</h1>
-                <div class="pr-row">
-                    <div class="pr-col"><p class="pr-p"><b>Org:</b> ${org}</p><p class="pr-p"><b>Site:</b> ${site}</p><p class="pr-p"><b>Address:</b> ${document.getElementById('aud_address').value}</p></div>
-                    <div class="pr-col"><p class="pr-p"><b>Auditor:</b> ${document.getElementById('aud_name').value}</p><p class="pr-p"><b>Date:</b> ${document.getElementById('audDate')?.value || new Date().toLocaleDateString()}</p></div>
-                </div>
-                <h2 class="pr-h2">Edge Network</h2>
-                <p class="pr-p"><b>Primary ISP:</b> ${document.getElementById('aud_isp').value}</p>
-                <p class="pr-p"><b>Failover:</b> ${document.getElementById('aud_failover').value}</p>
-            `;
-
-            if(this.state.inventory.gw.length > 0) {
-                html += `<h2 class="pr-h2">Network Hardware</h2><table class="pr-table"><thead><tr><th>ID</th><th>Model</th></tr></thead><tbody>`;
-                this.state.inventory.gw.forEach(i => html += `<tr><td>${i.name}</td><td>${i.model}</td></tr>`);
-                html += `</tbody></table>`;
+        populateSites: function() {
+            const dl = document.getElementById('dynamicSiteList');
+            if(dl) dl.innerHTML = this.state.sites.map(s => `<option value="${s.city} - ${s.site}">`).join('');
+        },
+        autofillSite: function(val) {
+            const match = this.state.sites.find(s => `${s.city} - ${s.site}` === val);
+            if(match) {
+                const isp = document.getElementById('out_isp'); if(isp) isp.value = match.provider || '';
+                this.toast("Site data autofilled.");
             }
-
-            html += `<h2 class="pr-h2">Topology & Visuals</h2>`;
-            const topoImg = this.flattenTopology();
-            html += `<img src="${topoImg}" class="pr-img">`;
-            
-            html += `<h2 class="pr-h2">Closing & Authorization</h2>`;
-            html += `<p class="pr-p">${document.getElementById('aud_notes').value}</p>`;
-            html += `
-                <div class="pr-row" style="margin-top:20px;">
-                    <div class="pr-col"><p><b>Auditor:</b></p><img src="${document.getElementById('sig1').toDataURL()}" class="pr-sig"></div>
-                    <div class="pr-col"><p><b>Site Rep:</b></p><img src="${document.getElementById('sig2').toDataURL()}" class="pr-sig"></div>
-                </div>
-            `;
-
-            document.getElementById('printZone').innerHTML = html;
-            
-            const origTitle = document.title;
-            document.title = `Audit_${org}_${site}`.replace(/\s+/g, '_');
-            
-            document.body.className = "printing";
-            window.print();
-            setTimeout(() => { document.body.className = "dark"; document.title = origTitle; }, 500);
         },
 
-        exportOutage: function() {
-            const site = document.getElementById('out_site').value || 'Unknown Site';
-            let html = `
-                <h1 class="pr-h1">ISP Outage Report</h1>
-                <div class="pr-row">
-                    <div class="pr-col"><p class="pr-p"><b>Site:</b> ${site}</p><p class="pr-p"><b>ISP:</b> ${document.getElementById('out_isp').value}</p><p class="pr-p"><b>Circuit:</b> ${document.getElementById('out_circ').value}</p></div>
-                    <div class="pr-col"><p class="pr-p"><b>Date:</b> ${document.getElementById('out_date').value}</p><p class="pr-p"><b>Reporter:</b> ${document.getElementById('reportedBy')?.value||''}</p></div>
-                </div>
-                <h2 class="pr-h2">Impact</h2>
-                <p class="pr-p"><b>Services Down:</b> ${document.getElementById('outServices')?.value||''}</p>
-                <p class="pr-p"><b>Symptoms:</b> ${document.getElementById('out_symp').value}</p>
-                <h2 class="pr-h2">Resolution</h2>
-                <p class="pr-p"><b>Ticket #:</b> ${document.getElementById('out_tkt').value}</p>
-                <p class="pr-p"><b>Actions:</b> ${document.getElementById('out_res').value}</p>
-            `;
-            document.getElementById('printZone').innerHTML = html;
+        // --- PDF ENGINE ---
+        exportPDF: async function() {
+            const mod = this.state.activeModule;
+            const overlay = document.getElementById('loadingOverlay');
+            overlay.classList.remove('hidden');
             
-            document.body.className = "printing";
-            window.print();
-            setTimeout(() => document.body.className = "dark", 500);
+            try {
+                // Pre-flatten canvases
+                const canvases = document.querySelectorAll('.view-active canvas');
+                for (let c of canvases) {
+                    const imgData = await this.Canvas.flatten(c.id);
+                    c.setAttribute('data-print-src', imgData);
+                }
+                
+                // Build the final HTML string dynamically based on inputs
+                const html = this.PrintEngine.buildHTML(mod);
+                document.getElementById('printZone').innerHTML = html;
+                
+                // Print command
+                setTimeout(() => {
+                    overlay.classList.add('hidden');
+                    document.title = `${mod.title}_Report_${new Date().toISOString().split('T')[0]}`;
+                    document.body.classList.add('printing');
+                    window.print();
+                    setTimeout(() => document.body.classList.remove('printing'), 500);
+                }, 500);
+            } catch(e) {
+                overlay.classList.add('hidden');
+                this.toast("Error generating PDF.");
+            }
+        }
+    };
+
+    // --- WIZARD CONTROLLER ---
+    App.Wizard = {
+        init: function(mod) {
+            App.state.step = 1;
+            
+            document.getElementById('wizardNav').innerHTML = mod.steps.map((s, i) => `
+                <button type="button" onclick="App.Wizard.goTo(${i+1})" class="w-full text-left px-4 py-3 rounded-xl font-bold text-[10px] uppercase tracking-widest border transition-all ${i+1 === 1 ? `bg-${mod.color}-600 border-${mod.color}-500 text-white` : 'bg-zinc-900 border-zinc-800 text-zinc-500'} nav-step-btn" data-step="${i+1}">
+                    ${i+1}. ${s.title}
+                </button>
+            `).join('');
+
+            document.getElementById('wizardContent').innerHTML = mod.steps.map((s, i) => `
+                <div id="wiz-step-${i+1}" class="step-container">
+                    <h2 class="text-xl font-bold text-white border-b border-zinc-800 pb-4 mb-6"><i data-lucide="check-circle" class="inline w-5 h-5 mr-2 text-${mod.color}-500"></i>${s.title}</h2>
+                    <div class="space-y-6">${s.build()}</div>
+                </div>
+            `).join('');
+
+            document.getElementById('wizardForm').className = `p-card min-h-[500px] border-t-4 border-t-${mod.color}-500 relative`;
+            document.getElementById('wizBadge').className = `bg-${mod.color}-500 text-white w-8 h-8 rounded-full flex items-center justify-center font-black`;
+            document.getElementById('wizProgress').className = `bg-${mod.color}-500 h-full transition-all duration-500`;
+
+            this.goTo(1);
+            setTimeout(() => { document.querySelectorAll('#wizardContent [data-inv]').forEach(el => App.Inventory.render(el.dataset.inv)); lucide.createIcons(); }, 50);
+        },
+        goTo: function(s) {
+            const mod = App.state.activeModule;
+            App.state.step = s;
+            
+            document.querySelectorAll('.step-container').forEach((c, i) => {
+                if(i+1 === s) c.classList.add('active'); else c.classList.remove('active');
+            });
+            document.querySelectorAll('.nav-step-btn').forEach((b, i) => {
+                if(i+1 === s) b.className = `w-full text-left px-4 py-3 rounded-xl font-bold text-[10px] uppercase tracking-widest border transition-all bg-${mod.color}-600 border-${mod.color}-500 text-white nav-step-btn`;
+                else b.className = `w-full text-left px-4 py-3 rounded-xl font-bold text-[10px] uppercase tracking-widest border transition-all bg-zinc-900 border-zinc-800 text-zinc-500 nav-step-btn`;
+            });
+
+            document.getElementById('wizBadge').innerText = s;
+            document.getElementById('wizTitle').innerText = mod.steps[s-1].title;
+            document.getElementById('wizProgress').style.width = `${(s/mod.steps.length)*100}%`;
+
+            document.getElementById('wizPrevBtn').style.display = s === 1 ? 'none' : 'block';
+            document.getElementById('wizNextBtn').style.display = s === mod.steps.length ? 'none' : 'block';
+            document.getElementById('wizPdfBtn').style.display = s === mod.steps.length ? 'flex' : 'none';
+
+            // Canvas Re-init
+            setTimeout(() => document.querySelectorAll(`#wiz-step-${s} canvas`).forEach(c => App.Canvas.setup(c.id)), 100);
+        },
+        next: function() { this.goTo(App.state.step + 1); },
+        prev: function() { this.goTo(App.state.step - 1); }
+    };
+
+    // --- INVENTORY ENGINE ---
+    App.Inventory = {
+        add: function(t) { 
+            if(!App.state.invData[t]) App.state.invData[t] = [];
+            App.state.invData[t].push({_id: 'dev_'+Date.now()}); 
+            this.render(t); App.triggerSave();
+        },
+        remove: function(btn) { 
+            const row = btn.closest('.inv-row'); const t = row.dataset.list;
+            App.state.invData[t] = App.state.invData[t].filter(i => i._id !== row.dataset.id); 
+            this.render(t); App.triggerSave();
+        },
+        render: function(t) {
+            const c = document.getElementById(`inv-${t}`); if(!c) return;
+            c.innerHTML = '';
+            (App.state.invData[t]||[]).forEach(i => {
+                const cl = document.getElementById('tpl-inv-row').content.cloneNode(true);
+                const row = cl.querySelector('.inv-row'); 
+                row.dataset.id = i._id; row.dataset.list = t;
+                const df = row.querySelector('.dynamic-fields');
+                
+                let fields = [];
+                if(['gateway','switch','cctvSwitch'].includes(t)) fields = [{f:'name', l:'ID'}, {f:'model', l:'Model'}, {f:'ports', l:'Ports', t:'num'}, {f:'sfp', l:'SFPs'}];
+                else if(['ap','camera','voip','sensor'].includes(t)) fields = [{f:'name', l:'ID/Name'}, {f:'model', l:'Model/Type'}, {f:'extra', l:'Status/Note'}];
+                else if(t==='cutsheet') fields = [{f:'cid', l:'Cable', w:'font-bold text-brand-400'}, {f:'src', l:'Src Port'}, {f:'dst', l:'Dst Port'}, {f:'stat', l:'Status'}];
+                else if(t==='fiberStrand') fields = [{f:'sid', l:'Strand', t:'num', w:'font-bold text-emerald-400'}, {f:'clr', l:'Color'}, {f:'tx', l:'Tx'}, {f:'rx', l:'Rx'}, {f:'loss', l:'Loss'}];
+                else if(t==='wifi') fields = [{f:'loc', l:'Location/AP'}, {f:'ssid', l:'SSID'}, {f:'sig', l:'dBm (Sig)', w:'font-mono'}, {f:'band', l:'Band'}];
+                else if(t==='port') fields = [{f:'port', l:'Port #', w:'font-bold'}, {f:'vlan', l:'VLAN', t:'num'}, {f:'poe', l:'PoE Draw'}, {f:'stat', l:'Link Status'}];
+                else fields = [{f:'name', l:'ID'}, {f:'model', l:'Details'}]; 
+                
+                df.innerHTML = fields.map(f => `<div class="${f.t==='num'?'w-16':'flex-1'}"><label class="p-label text-[9px]">${f.l}</label><input type="${f.t==='num'?'number':'text'}" data-field="${f.f}" value="${i[f.f]||''}" class="p-input bg-zinc-950 py-1.5 px-2 text-sm ${f.w||''}"></div>`).join('');
+                c.appendChild(cl);
+            });
+        }
+    };
+
+    // --- CANVAS ENGINE ---
+    App.Canvas = {
+        setup: function(id) {
+            const canvas = document.getElementById(id);
+            if(!canvas || canvas.dataset.ready) return;
+            canvas.dataset.ready = 'true';
+            
+            canvas.width = (id === 'topologyCanvas' || id === 'wfCv' || id === 'fibCv') ? 1200 : 600;
+            canvas.height = (id === 'topologyCanvas' || id === 'wfCv' || id === 'fibCv') ? 800 : 200;
+            const ctx = canvas.getContext('2d');
+
+            if(App.state.canvasData[id]) {
+                const img = new Image(); img.onload = () => ctx.drawImage(img, 0, 0); img.src = App.state.canvasData[id];
+            }
+
+            let isD = false;
+            const getP = (e) => {
+                const r = canvas.getBoundingClientRect();
+                const cX = e.clientX || e.touches[0].clientX; const cY = e.clientY || e.touches[0].clientY;
+                return { x: (cX - r.left) * (canvas.width/r.width), y: (cY - r.top) * (canvas.height/r.height) };
+            };
+
+            canvas.onmousedown = canvas.ontouchstart = e => { isD = true; const p = getP(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); };
+            canvas.onmousemove = canvas.ontouchmove = e => { 
+                if(!isD) return; e.preventDefault(); const p = getP(e); 
+                ctx.lineWidth = id.includes('sig') ? 4 : 5; ctx.lineCap = 'round'; 
+                ctx.strokeStyle = id.includes('sig') ? '#000' : '#3b82f6'; 
+                if(id==='fibCv') ctx.strokeStyle = '#ef4444'; // Red for fiber markup
+                ctx.lineTo(p.x, p.y); ctx.stroke(); 
+            };
+            canvas.onmouseup = canvas.ontouchend = canvas.onmouseout = () => {
+                if(isD) { isD = false; App.state.canvasData[id] = canvas.toDataURL(); App.triggerSave(); }
+            };
+        },
+        clear: function(id) {
+            const c = document.getElementById(id);
+            c.getContext('2d').clearRect(0,0,c.width,c.height);
+            App.state.canvasData[id] = null;
+            if(id === 'topologyCanvas' || id === 'wfCv' || id === 'fibCv') document.getElementById('tileOverlay')?.replaceChildren();
+            App.triggerSave();
+        },
+        addTile: function(type, bgClass) {
+            const label = prompt("Enter Label:", type); if(!label) return;
+            const layer = document.getElementById('tileOverlay'); if(!layer) return;
+            const tile = document.createElement('div');
+            tile.className = `rack-tile px-3 py-1.5 text-white text-[10px] font-bold rounded-lg shadow-xl border-2 border-white pointer-events-auto ${bgClass}`;
+            tile.innerText = label; tile.style.left = "20px"; tile.style.top = "20px";
+            tile.ondblclick = () => tile.remove();
+
+            let drag = false, oX, oY;
+            tile.onmousedown = tile.ontouchstart = e => {
+                drag = true; oX = (e.clientX || e.touches[0].clientX) - tile.offsetLeft; oY = (e.clientY || e.touches[0].clientY) - tile.offsetTop;
+            };
+            const move = e => { if(drag) { e.preventDefault(); tile.style.left = ((e.clientX || (e.touches && e.touches[0].clientX)) - oX) + 'px'; tile.style.top = ((e.clientY || (e.touches && e.touches[0].clientY)) - oY) + 'px'; } };
+            const stop = () => drag = false;
+            document.addEventListener('mousemove', move, {passive:false}); document.addEventListener('touchmove', move, {passive:false});
+            document.addEventListener('mouseup', stop); document.addEventListener('touchend', stop);
+            layer.appendChild(tile);
+        },
+        flatten: function(id) {
+            return new Promise(resolve => {
+                const main = document.getElementById(id); if(!main) return resolve('');
+                const tmp = document.createElement('canvas'); tmp.width = main.width; tmp.height = main.height;
+                const ctx = tmp.getContext('2d');
+                
+                const drawContent = () => {
+                    ctx.drawImage(main, 0, 0);
+                    const rect = main.getBoundingClientRect();
+                    const layer = main.parentElement.querySelector('#tileOverlay') || main.parentElement;
+                    
+                    layer.querySelectorAll('.rack-tile').forEach(t => {
+                        const tRect = t.getBoundingClientRect();
+                        const x = (tRect.left - rect.left) * (main.width/rect.width);
+                        const y = (tRect.top - rect.top) * (main.height/rect.height);
+                        const w = t.offsetWidth * (main.width/rect.width);
+                        const h = t.offsetHeight * (main.height/rect.height);
+                        
+                        ctx.fillStyle = "#000"; ctx.fillRect(x-2, y-2, w+4, h+4);
+                        ctx.fillStyle = t.classList.contains('bg-blue-600') ? "#2563eb" : (t.classList.contains('bg-red-600') ? "#dc2626" : (t.classList.contains('bg-emerald-600') ? "#059669" : "#18181b"));
+                        ctx.fillRect(x, y, w, h);
+                        
+                        ctx.fillStyle = "white"; ctx.font = "bold 16px Inter, Arial"; ctx.textAlign = "center";
+                        ctx.fillText(t.innerText, x+(w/2), y+(h/2)+6);
+                    });
+                    resolve(tmp.toDataURL('image/jpeg', 0.9));
+                };
+
+                ctx.fillStyle = "white"; ctx.fillRect(0,0,tmp.width,tmp.height);
+                
+                // Handle Background Image if present
+                const bgStr = main.parentElement.style.backgroundImage;
+                if(bgStr && bgStr !== 'none') {
+                    const url = bgStr.replace(/^url\(["']?/, '').replace(/["']?\)$/, '');
+                    const img = new Image(); img.crossOrigin = "Anonymous";
+                    img.onload = () => {
+                        const r = Math.min(tmp.width/img.width, tmp.height/img.height);
+                        ctx.drawImage(img, 0,0, img.width, img.height, (tmp.width-img.width*r)/2, (tmp.height-img.height*r)/2, img.width*r, img.height*r);
+                        drawContent();
+                    };
+                    img.onerror = drawContent;
+                    img.src = url;
+                } else { drawContent(); }
+            });
+        }
+    };
+
+    // --- HTML BUILDERS ---
+    const UI = {
+        // Shared Utilities
+        siteBar: () => `
+            <div class="flex gap-2 items-end mb-4 bg-zinc-950 p-4 rounded-xl border border-zinc-800">
+                <div class="flex-1"><label class="p-label text-[9px] text-brand-500">Site Importer (CSV/Excel)</label><input type="file" accept=".csv, .xlsx" class="p-input text-xs py-1.5" onchange="App.handleCSV(event)"></div>
+            </div>
+        `,
+        imgUpload: (id, lbl) => `
+            <div class="mt-4 border-2 border-dashed border-zinc-700 p-6 rounded-xl text-center bg-zinc-900/50 cursor-pointer hover:border-brand-500 no-print" onclick="document.getElementById('${id}').click()">
+                <i data-lucide="camera" class="mx-auto w-6 h-6 mb-2 text-zinc-500"></i><span class="text-xs text-zinc-400 font-bold">${lbl}</span>
+                <input type="file" id="${id}" accept="image/*" class="hidden" onchange="const r=new FileReader(); r.onload=e=>{ document.getElementById('${id}Prv').src=e.target.result; document.getElementById('${id}Ctn').classList.remove('hidden'); }; r.readAsDataURL(this.files[0]);">
+            </div>
+            <div id="${id}Ctn" class="hidden mt-2 border border-zinc-700 rounded-xl overflow-hidden relative"><img id="${id}Prv" class="w-full object-contain max-h-[300px]"><button type="button" class="absolute top-2 right-2 bg-zinc-900 p-1 rounded text-red-500 no-print" onclick="document.getElementById('${id}Prv').src=''; document.getElementById('${id}Ctn').classList.add('hidden');"><i data-lucide="x" class="w-4 h-4"></i></button></div>
+        `,
+
+        // AUDIT
+        bAudLoc: () => `
+            ${UI.siteBar()}
+            <div class="grid grid-cols-2 gap-4">
+                <div class="col-span-2"><label class="p-label">Client / Org</label><input type="text" id="audOrg" class="p-input text-lg font-bold text-white"></div>
+                <div><label class="p-label">Site Name</label><input type="text" id="audSite" list="dynamicSiteList" class="p-input" onchange="App.autofillSite(this.value)"></div>
+                <div><label class="p-label">Address</label><div class="flex gap-2"><input type="text" id="audAddr" class="p-input text-xs"><button type="button" onclick="App.getGPS('audAddr')" class="bg-zinc-800 px-3 rounded-lg"><i data-lucide="crosshair" class="w-4 h-4"></i></button></div></div>
+                <div><label class="p-label">Auditor</label><input type="text" id="audName" class="p-input"></div>
+                <div><label class="p-label">Date</label><input type="date" id="audDate" class="p-input"></div>
+            </div>
+        `,
+        bAudNet: () => `
+            <div class="grid grid-cols-2 gap-4 mb-6"><div><label class="p-label">Primary ISP</label><input type="text" id="audISP" class="p-input"></div><div><label class="p-label">Failover ISP</label><input type="text" id="audFail" class="p-input"></div></div>
+            <label class="p-label mb-2 border-t border-zinc-800 pt-6">Gateways / Firewalls</label><div id="inv-gateway" data-inv="gateway" class="space-y-2 mb-2"></div><button type="button" onclick="App.Inventory.add('gateway')" class="w-full py-3 bg-zinc-800 rounded-lg text-[10px] font-bold uppercase text-zinc-300 border border-zinc-700">+ Add Gateway</button>
+        `,
+        bAudLan: () => `
+            <label class="p-label mb-2">Network Switches</label><div id="inv-switch" data-inv="switch" class="space-y-2 mb-2"></div><button type="button" onclick="App.Inventory.add('switch')" class="w-full py-3 bg-zinc-800 rounded-lg text-[10px] font-bold uppercase text-zinc-300 border border-zinc-700 mb-6">+ Add Switch</button>
+            <label class="p-label mb-2 border-t border-zinc-800 pt-6">Access Points</label><div id="inv-ap" data-inv="ap" class="space-y-2 mb-2"></div><button type="button" onclick="App.Inventory.add('ap')" class="w-full py-3 bg-zinc-800 rounded-lg text-[10px] font-bold uppercase text-zinc-300 border border-zinc-700">+ Add Access Point</button>
+        `,
+        bAudPwr: () => `
+            <label class="p-label mb-2">UPS / Power Units</label><div id="inv-ups" data-inv="ups" class="space-y-2 mb-2"></div><button type="button" onclick="App.Inventory.add('ups')" class="w-full py-3 bg-zinc-800 rounded-lg text-[10px] font-bold uppercase text-zinc-300 border border-zinc-700 mb-6">+ Add UPS</button>
+            <div class="grid grid-cols-2 gap-4 border-t border-zinc-800 pt-6"><div><label class="p-label">Rack U Total</label><input type="number" id="audUTotal" class="p-input"></div><div><label class="p-label">Rack U Open</label><input type="number" id="audUOpen" class="p-input"></div></div>
+        `,
+        bAudAcc: () => `
+            <label class="p-label mb-2">Door Controllers</label><div id="inv-acController" data-inv="acController" class="space-y-2 mb-2"></div><button type="button" onclick="App.Inventory.add('acController')" class="w-full py-3 bg-zinc-800 rounded-lg text-[10px] font-bold uppercase text-zinc-300 border border-zinc-700 mb-6">+ Add Controller</button>
+            <label class="p-label mb-2 border-t border-zinc-800 pt-6">Doors / Readers</label><div id="inv-door" data-inv="door" class="space-y-2 mb-2"></div><button type="button" onclick="App.Inventory.add('door')" class="w-full py-3 bg-zinc-800 rounded-lg text-[10px] font-bold uppercase text-zinc-300 border border-zinc-700">+ Add Door</button>
+        `,
+        bAudCam: () => `
+            <label class="p-label mb-2">NVRs / Storage</label><div id="inv-nvr" data-inv="nvr" class="space-y-2 mb-2"></div><button type="button" onclick="App.Inventory.add('nvr')" class="w-full py-3 bg-zinc-800 rounded-lg text-[10px] font-bold uppercase text-zinc-300 border border-zinc-700 mb-6">+ Add NVR</button>
+            <label class="p-label mb-2 border-t border-zinc-800 pt-6">Cameras</label><div id="inv-camera" data-inv="camera" class="space-y-2 mb-2"></div><button type="button" onclick="App.Inventory.add('camera')" class="w-full py-3 bg-zinc-800 rounded-lg text-[10px] font-bold uppercase text-zinc-300 border border-zinc-700">+ Add Camera</button>
+        `,
+        bTopology: () => `
+            <div class="flex flex-wrap gap-2 mb-3 no-print">
+                <button type="button" onclick="App.Canvas.addTile('Switch', 'bg-blue-600')" class="px-3 py-1.5 bg-zinc-800 rounded text-[10px] font-bold">+ Switch</button>
+                <button type="button" onclick="App.Canvas.addTile('Router', 'bg-emerald-600')" class="px-3 py-1.5 bg-zinc-800 rounded text-[10px] font-bold">+ Router</button>
+                <button type="button" onclick="App.Canvas.addTile('Firewall', 'bg-red-600')" class="px-3 py-1.5 bg-zinc-800 rounded text-[10px] font-bold">+ Firewall</button>
+                <button type="button" onclick="App.Canvas.addTile('UPS', 'bg-amber-600')" class="px-3 py-1.5 bg-zinc-800 rounded text-[10px] font-bold">+ UPS</button>
+                <button type="button" onclick="App.Canvas.clear('topologyCanvas')" class="ml-auto text-red-500 text-xs font-bold">Clear All</button>
+            </div>
+            <div class="h-[450px] border-2 border-zinc-700 rounded-xl relative bg-white overflow-hidden shadow-inner">
+                <canvas id="topologyCanvas" class="absolute inset-0 w-full h-full z-10"></canvas>
+                <div id="tileOverlay" class="absolute inset-0 z-20 pointer-events-none overflow-hidden"></div>
+            </div>
+            ${UI.imgUpload('audPhoto', 'Attach Rack Photo')}
+        `,
+        bSignoff: () => `
+            <div><label class="p-label">Closing Notes / Remediation</label><textarea id="audNotes" rows="4" class="p-input"></textarea></div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                <div><label class="p-label flex justify-between">Auditor Sig <span class="text-red-500 cursor-pointer no-print" onclick="App.Canvas.clear('sigAud')">clear</span></label><div class="h-24 bg-white rounded-lg border border-zinc-700 relative"><canvas id="sigAud" class="absolute inset-0 w-full h-full"></canvas></div></div>
+                <div><label class="p-label flex justify-between">Site Rep Sig <span class="text-red-500 cursor-pointer no-print" onclick="App.Canvas.clear('sigRep')">clear</span></label><div class="h-24 bg-white rounded-lg border border-zinc-700 relative"><canvas id="sigRep" class="absolute inset-0 w-full h-full"></canvas></div></div>
+            </div>
+        `,
+
+        // RFQ Builder
+        bRfqProj: () => `
+            <div><label class="p-label">Project Title</label><input type="text" id="rfqTitle" class="p-input text-lg font-bold text-violet-400"></div>
+            <div class="grid grid-cols-2 gap-4 mt-4"><div><label class="p-label">Location</label><input type="text" id="rfqLoc" list="dynamicSiteList" class="p-input"></div><div><label class="p-label">Due Date</label><input type="date" id="rfqDue" class="p-input"></div></div>
+            <div class="mt-4"><label class="p-label">Scope / Context</label><textarea id="rfqDesc" rows="3" class="p-input"></textarea></div>
+        `,
+        bRfqScope: () => `
+            <div class="space-y-4">
+                <div class="bg-zinc-900 p-4 rounded-xl border border-zinc-800"><label class="flex items-center gap-2 font-bold text-sm text-white mb-2"><input type="checkbox" id="rfqA" checked class="w-4 h-4 accent-violet-500"> Cabling</label><input type="text" id="rfqATxt" placeholder="e.g. 48 drops Cat6 Belden" class="p-input text-xs"></div>
+                <div class="bg-zinc-900 p-4 rounded-xl border border-zinc-800"><label class="flex items-center gap-2 font-bold text-sm text-white mb-2"><input type="checkbox" id="rfqB" checked class="w-4 h-4 accent-violet-500"> CCTV</label><input type="text" id="rfqBTxt" placeholder="e.g. 10x Axis cameras, 60-day retention" class="p-input text-xs"></div>
+                <div class="bg-zinc-900 p-4 rounded-xl border border-zinc-800"><label class="flex items-center gap-2 font-bold text-sm text-white mb-2"><input type="checkbox" id="rfqC" class="w-4 h-4 accent-violet-500"> Access Control</label><input type="text" id="rfqCTxt" placeholder="e.g. 4 doors HID" class="p-input text-xs"></div>
+            </div>
+        `,
+        bRfqAdmin: () => `
+            <div class="grid grid-cols-2 gap-4 mb-4"><div><label class="p-label">Warranty Req.</label><input type="text" id="rfqWarr" value="1-Year Labor" class="p-input"></div><div><label class="p-label">Submit To Email</label><input type="email" id="rfqEmail" class="p-input text-violet-400"></div></div>
+            <div class="mt-8 text-center"><i data-lucide="file-check-2" class="w-12 h-12 text-violet-500 mx-auto mb-2"></i><h3 class="text-xl font-bold text-white">RFQ Ready for Export</h3></div>
+        `,
+
+        // Outage
+        bOutSite: () => `
+            ${UI.siteBar()}
+            <div><label class="p-label">Affected Site</label><input type="text" id="outSite" list="dynamicSiteList" class="p-input font-bold text-incident-400" onchange="App.autofillSite(this.value)"></div>
+            <div class="grid grid-cols-2 gap-4 mt-4"><div><label class="p-label">ISP</label><input type="text" id="out_isp" class="p-input"></div><div><label class="p-label">Date</label><input type="date" id="out_date" class="p-input"></div></div>
+        `,
+        bOutImp: () => `
+            <div><label class="p-label">Services Impacted</label><input type="text" id="outServices" class="p-input" value="Internet, VPN"></div>
+            <div class="mt-4"><label class="p-label">Symptoms Noticed</label><textarea id="outSymp" rows="4" class="p-input"></textarea></div>
+        `,
+        bOutRes: () => `
+            <div class="grid grid-cols-2 gap-4 mb-4"><div><label class="p-label">ISP Ticket #</label><input type="text" id="outTkt" class="p-input"></div><div><label class="p-label">Root Cause</label><input type="text" id="outCause" class="p-input"></div></div>
+            <div><label class="p-label">Immediate Actions Taken</label><textarea id="outActions" rows="3" class="p-input"></textarea></div>
+        `,
+        bOutRev: () => `
+            <div><label class="p-label">Post-Incident Review</label><textarea id="outRev" rows="4" class="p-input"></textarea></div>
+            <div class="mt-8 text-center"><i data-lucide="check-circle" class="w-12 h-12 text-incident-500 mx-auto mb-2"></i><h3 class="text-xl font-bold text-white">Report Ready</h3></div>
+        `,
+
+        // Single Modules
+        bFiber: () => `
+            <div class="grid grid-cols-2 gap-4 mb-6"><div><label class="p-label">Site</label><input type="text" id="fibSite" list="dynamicSiteList" class="p-input"></div><div><label class="p-label">Project</label><input type="text" id="fibProj" class="p-input"></div></div>
+            <div class="mb-6"><div class="flex justify-between mb-2"><label class="p-label">Markup</label><button type="button" onclick="App.Canvas.clear('fibCv')" class="text-[10px] text-red-500 font-bold no-print">Clear</button></div>
+            <div id="fibCtn" class="h-[400px] border-2 border-zinc-700 bg-white rounded-xl relative bg-contain bg-no-repeat bg-center"><canvas id="fibCv" class="absolute inset-0 w-full h-full z-10"></canvas></div>
+            <button class="text-xs text-emerald-500 font-bold mt-2 no-print" onclick="document.getElementById('fibBg').click()">Upload Blueprint</button><input type="file" id="fibBg" accept="image/*" class="hidden" onchange="const r=new FileReader(); r.onload=e=>{ document.getElementById('fibCtn').style.backgroundImage='url('+e.target.result+')'; App.Canvas.setup('fibCv'); }; r.readAsDataURL(this.files[0]);"></div>
+            <div><label class="p-label mb-2">Test Data (Tx/Rx)</label><div id="inv-fiberStrand" data-inv="fiberStrand" class="space-y-2 mb-2"></div><button type="button" onclick="App.Inventory.add('fiberStrand')" class="w-full py-3 bg-zinc-800 rounded-lg text-[10px] font-bold uppercase text-emerald-400 border border-zinc-700">+ Add Strand</button></div>
+        `,
+        bCutsheet: () => `
+            <div class="grid grid-cols-2 gap-4 mb-6"><div><label class="p-label">Site</label><input type="text" id="csSite" list="dynamicSiteList" class="p-input"></div><div><label class="p-label">Project</label><input type="text" id="csProj" class="p-input"></div></div>
+            <div><label class="p-label mb-2">Cable Matrix</label><div id="inv-cutsheet" data-inv="cutsheet" class="space-y-2 mb-2"></div><button type="button" onclick="App.Inventory.add('cutsheet')" class="w-full py-3 bg-zinc-800 rounded-lg text-[10px] font-bold uppercase text-brand-400 border border-zinc-700">+ Add Cable</button></div>
+        `,
+        bInventory: () => `
+            <div class="grid grid-cols-2 gap-4 mb-6"><div><label class="p-label">Site</label><input type="text" id="invSite" list="dynamicSiteList" class="p-input"></div><div><label class="p-label">Category</label><input type="text" id="invCat" class="p-input" placeholder="e.g. Switch"></div></div>
+            <div class="bg-red-900/10 p-4 rounded-xl border border-red-900/30 mb-4"><h3 class="text-xs font-bold text-red-500 mb-2">REMOVED</h3><div class="grid grid-cols-2 gap-2"><input type="text" id="invOId" placeholder="Old ID" class="p-input text-xs"><input type="text" id="invOSn" placeholder="Old Serial" class="p-input text-xs font-mono"></div></div>
+            <div class="bg-blue-900/10 p-4 rounded-xl border border-blue-900/30"><h3 class="text-xs font-bold text-blue-500 mb-2">INSTALLED</h3><div class="grid grid-cols-2 gap-2"><input type="text" id="invNId" placeholder="New ID" class="p-input text-xs"><input type="text" id="invNSn" placeholder="New Serial" class="p-input text-xs font-mono"></div></div>
+        `,
+        bWifi: () => `
+            <div class="grid grid-cols-2 gap-4 mb-6"><div><label class="p-label">Site</label><input type="text" id="wfSite" list="dynamicSiteList" class="p-input"></div><div><label class="p-label">Surveyor</label><input type="text" id="wfName" class="p-input"></div></div>
+            <div class="mb-6"><div class="flex justify-between mb-2"><label class="p-label">Heatmap Markup</label><button type="button" onclick="App.Canvas.clear('wfCv')" class="text-[10px] text-red-500 font-bold no-print">Clear</button></div>
+            <div id="wfCtn" class="h-[400px] border-2 border-zinc-700 bg-white rounded-xl relative bg-contain bg-no-repeat bg-center"><canvas id="wfCv" class="absolute inset-0 w-full h-full z-10"></canvas></div>
+            <button class="text-xs text-cyan-500 font-bold mt-2 no-print" onclick="document.getElementById('wfBg').click()">Upload Floorplan</button><input type="file" id="wfBg" accept="image/*" class="hidden" onchange="const r=new FileReader(); r.onload=e=>{ document.getElementById('wfCtn').style.backgroundImage='url('+e.target.result+')'; App.Canvas.setup('wfCv'); }; r.readAsDataURL(this.files[0]);"></div>
+            <div><label class="p-label mb-2">Signal Log</label><div id="inv-wifi" data-inv="wifi" class="space-y-2 mb-2"></div><button type="button" onclick="App.Inventory.add('wifi')" class="w-full py-3 bg-zinc-800 rounded-lg text-[10px] font-bold uppercase text-cyan-400 border border-zinc-700">+ Add Reading</button></div>
+        `,
+        bPort: () => `
+            <div class="grid grid-cols-2 gap-4 mb-6"><div><label class="p-label">Site</label><input type="text" id="ptSite" list="dynamicSiteList" class="p-input"></div><div><label class="p-label">Switch ID</label><input type="text" id="ptSw" class="p-input font-bold text-brand-400"></div></div>
+            <div><label class="p-label mb-2">Validation Matrix</label><div id="inv-port" data-inv="port" class="space-y-2 mb-2"></div><button type="button" onclick="App.Inventory.add('port')" class="w-full py-3 bg-zinc-800 rounded-lg text-[10px] font-bold uppercase text-brand-400 border border-zinc-700">+ Validate Port</button></div>
+        `,
+        bRma: () => `
+            <div class="grid grid-cols-2 gap-4 mb-4"><div><label class="p-label">Device Type</label><input type="text" id="rmaType" class="p-input font-bold text-amber-400"></div><div><label class="p-label">Defective SN</label><input type="text" id="rmaSn" class="p-input font-mono"></div></div>
+            <div class="mb-4"><label class="p-label">Issue / Reason</label><textarea id="rmaReason" rows="2" class="p-input"></textarea></div>
+            <div class="grid grid-cols-2 gap-4 mb-6"><div><label class="p-label">RMA Ticket #</label><input type="text" id="rmaTkt" class="p-input"></div><div><label class="p-label">Tracking #</label><input type="text" id="rmaTrk" class="p-input font-mono"></div></div>
+            ${UI.imgUpload('rmaPhoto', 'Photo of Packed Box / Return Label')}
+        `,
+        bAccept: () => `
+            <div class="grid grid-cols-2 gap-4 mb-6"><div><label class="p-label">Employee Name</label><input type="text" id="accUser" class="p-input font-bold text-emerald-400"></div><div><label class="p-label">Location / Desk #</label><input type="text" id="accLoc" class="p-input"></div></div>
+            <div class="space-y-3 mb-6 bg-zinc-950 p-5 rounded-xl border border-zinc-800">
+                <label class="flex items-center gap-3 text-sm font-bold text-white"><input type="checkbox" id="accC1" class="w-5 h-5 accent-emerald-500"> PC / Dock Powered & Booted</label>
+                <label class="flex items-center gap-3 text-sm font-bold text-white"><input type="checkbox" id="accC2" class="w-5 h-5 accent-emerald-500"> Network Verified (LAN/WLAN)</label>
+                <label class="flex items-center gap-3 text-sm font-bold text-white"><input type="checkbox" id="accC3" class="w-5 h-5 accent-emerald-500"> Monitors Configured</label>
+                <label class="flex items-center gap-3 text-sm font-bold text-white"><input type="checkbox" id="accC4" class="w-5 h-5 accent-emerald-500"> VoIP Phone Tested</label>
+            </div>
+            <div><label class="p-label flex justify-between">User Signature <span class="text-red-500 cursor-pointer no-print" onclick="App.Canvas.clear('sigAcc')">clear</span></label><div class="h-32 bg-white rounded-xl border border-zinc-700 relative"><canvas id="sigAcc" class="absolute inset-0 w-full h-full"></canvas></div><p class="text-[10px] text-zinc-500 mt-2 uppercase tracking-widest">I confirm the workstation is operational.</p></div>
+        `
+    };
+
+    // --- PRINT ENGINE ---
+    App.PrintEngine = {
+        buildHTML: function(mod) {
+            let html = `<h1 class="pr-h1">${mod.title} Report</h1>`;
+            
+            if(mod.id === 'rfq') {
+                html += `
+                    <div class="rfq-header-box"><p class="pr-p"><span class="pr-lbl">Project:</span> ${App.Utils.val('rfqTitle')}</p><p class="pr-p"><span class="pr-lbl">Location:</span> ${App.Utils.val('rfqLoc')}</p><p class="pr-p"><span class="pr-lbl">Scope:</span> ${App.Utils.val('rfqDesc')}</p></div>
+                    <h2 class="pr-h2">Technical Scope</h2>
+                `;
+                if(document.getElementById('rfqA')?.checked) html += `<div class="rfq-module"><b>[X] Cabling:</b> ${App.Utils.val('rfqATxt')}</div>`;
+                if(document.getElementById('rfqB')?.checked) html += `<div class="rfq-module"><b>[X] CCTV:</b> ${App.Utils.val('rfqBTxt')}</div>`;
+                if(document.getElementById('rfqC')?.checked) html += `<div class="rfq-module"><b>[X] Access Control:</b> ${App.Utils.val('rfqCTxt')}</div>`;
+                html += `<h2 class="pr-h2">Admin</h2><p class="pr-p"><b>Warranty:</b> ${App.Utils.val('rfqWarr')}</p><p class="pr-p"><b>Submit Bids To:</b> ${App.Utils.val('rfqEmail')}</p>`;
+            } 
+            else if (mod.id === 'rma') {
+                html += `<div class="pr-row"><div class="pr-col"><p class="pr-p"><span class="pr-lbl">Device:</span> ${App.Utils.val('rmaType')}</p><p class="pr-p"><span class="pr-lbl">Serial:</span> ${App.Utils.val('rmaSn')}</p></div><div class="pr-col"><p class="pr-p"><span class="pr-lbl">RMA Ticket:</span> ${App.Utils.val('rmaTkt')}</p><p class="pr-p"><span class="pr-lbl">Tracking:</span> ${App.Utils.val('rmaTrk')}</p></div></div><h2 class="pr-h2">Reason</h2><p class="pr-p">${App.Utils.val('rmaReason')}</p>`;
+                if(document.getElementById('rmaPhotoPrv')?.src) html += `<h2 class="pr-h2">Shipping Photo</h2><img src="${document.getElementById('rmaPhotoPrv').src}" class="pr-img">`;
+            }
+            else if (mod.id === 'accept') {
+                html += `<div class="pr-row"><div class="pr-col"><p class="pr-p"><span class="pr-lbl">User:</span> ${App.Utils.val('accUser')}</p></div><div class="pr-col"><p class="pr-p"><span class="pr-lbl">Location:</span> ${App.Utils.val('accLoc')}</p></div></div><h2 class="pr-h2">Checklist</h2><p class="pr-p">[${document.getElementById('accC1')?.checked?'X':' '}] PC Powered & Booted</p><p class="pr-p">[${document.getElementById('accC2')?.checked?'X':' '}] Network Verified</p><p class="pr-p">[${document.getElementById('accC3')?.checked?'X':' '}] Monitors Configured</p><p class="pr-p">[${document.getElementById('accC4')?.checked?'X':' '}] Phones Tested</p><div style="margin-top:40px;"><p class="pr-lbl">Signature</p><img src="${document.getElementById('sigAcc')?.getAttribute('data-print-src')||''}" class="pr-sig"></div>`;
+            }
+            else {
+                // Universal Dumper for forms
+                document.querySelectorAll('.view-active .p-input').forEach(el => {
+                    if(el.id && el.value) html += `<p class="pr-p"><span class="pr-lbl">${el.previousElementSibling?.innerText || 'Data'}:</span> ${el.value}</p>`;
+                });
+                document.querySelectorAll('.view-active [data-inv]').forEach(el => {
+                    const t = el.dataset.inv; const items = App.state.invData[t] || [];
+                    if(items.length) {
+                        html += `<h2 class="pr-h2">${t} MATRIX</h2><table class="pr-table"><thead><tr>`;
+                        Object.keys(items[0]).filter(k=>k!=='_id').forEach(k => html += `<th>${k}</th>`);
+                        html += `</tr></thead><tbody>`;
+                        items.forEach(i => { html += `<tr>`; Object.keys(i).filter(k=>k!=='_id').forEach(k => html += `<td>${i[k]||''}</td>`); html += `</tr>`; });
+                        html += `</tbody></table>`;
+                    }
+                });
+                document.querySelectorAll('.view-active canvas').forEach(c => {
+                    if(c.getAttribute('data-print-src')) html += `<h2 class="pr-h2">Visual Map</h2><img src="${c.getAttribute('data-print-src')}" class="pr-img">`;
+                });
+            }
+            return html;
         }
     };
 
     window.onload = () => App.init();
 </script>
-
 </body>
 </html>
