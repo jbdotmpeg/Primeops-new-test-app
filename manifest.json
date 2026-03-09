@@ -1,0 +1,16 @@
+{
+  "name": "PrimeOps Field Suite",
+  "short_name": "PrimeOps",
+  "description": "IT Infrastructure Auditing and Incident Reporting.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#09090b",
+  "theme_color": "#f97316",
+  "icons": [
+    {
+      "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c2/IT_icon.svg/512px-IT_icon.svg.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
