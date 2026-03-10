@@ -1,16 +1,16 @@
-{
-  "name": "PrimeOps Field Suite",
-  "short_name": "PrimeOps",
-  "description": "IT Field Engineering & PDF Reports.",
-  "start_url": "./index.html",
-  "display": "standalone",
-  "background_color": "#09090b",
-  "theme_color": "#f97316",
-  "icons": [
-    {
-      "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c2/IT_icon.svg/512px-IT_icon.svg.png",
-      "sizes": "512x512",
-      "type": "image/png"
-    }
-  ]
-}
+const CACHE_NAME = 'primeops-cache-v2';
+const urlsToCache = [
+  './index.html',
+  './manifest.json',
+  'https://cdn.tailwindcss.com',
+  'https://unpkg.com/lucide@latest',
+  'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'
+];
+
+self.addEventListener('install', event => {
+  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(urlsToCache)));
+});
+
+self.addEventListener('fetch', event => {
+  event.respondWith(caches.match(event.request).then(response => response || fetch(event.request)));
+});
