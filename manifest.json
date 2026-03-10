@@ -1,7 +1,7 @@
 {
   "name": "PrimeOps Field Suite",
   "short_name": "PrimeOps",
-  "description": "IT Infrastructure Auditing and Incident Reporting.",
+  "description": "IT Field Engineering & PDF Reports.",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#09090b",
